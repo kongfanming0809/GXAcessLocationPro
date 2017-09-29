@@ -1,0 +1,132 @@
+http://www.cnblogs.com/Johnny_Z/archive/2011/09/12/2174148.html
+
+C# 流总结
+前言
+ 本篇文章简单总结了在C#编程中经常会用到的一些流。比如说FileStream、MemoryStream、 BufferedStream、 NetWorkStream、 StreamReader/StreamWriter、 TextReader/TextWriter等的简单用法。
+内容
+一  FileStream类
+     FileStream类主要用于读取磁盘上的文件或者向磁盘文件写入信息。有时，我们需要将程序中的一些数据存储到磁盘上或是读取配置文件中某些内容，在这里我们就会用该类。
+     从磁盘上的文件中读取内容：
+
+1 FileStream file = File.Open(@"F:\file.txt", FileMode.Open); //初始化文件流
+2 byte[] array = new byte[file.Length];//初始化字节数组
+3 file.Read(array, 0, array.Length);//读取流中数据把它写到字节数组中
+4 file.Close();//关闭流
+5 string str = Encoding.Default.GetString(array);//将字节数组内容转化为字符串
+6 Console.WriteLine(str);
+     将数据写入磁盘文件：
+
+1 FileStream file = File.Open(@"F:\file.txt", FileMode.Append);//初始化文件流
+2 byte[] array = Encoding.UTF8.GetBytes("Hello World!你好");//给字节数组赋值
+3 file.Write(array, 0, array.Length);//将字节数组写入文件流
+4 file.Close();//关闭流
+二  MemoryStream类
+     MemoryStream类主要用于操作内存中的数据。比如说网络中传输数据时可以用流的形式，当我们收到这些流数据时就可以声明MemoryStream类来存储并且处理它们。
+     MemoryStream操作字符串：
+
+string str = "Hi!你好！";
+byte[] array = Encoding.UTF8.GetBytes(str);//将字符串转化为字节数组
+MemoryStream memory = new MemoryStream(array);//初始化MemoryStream类
+byte[] arrayNew = memory.ToArray();//将内存中的数据转换为字节数组
+string strNew = Encoding.UTF8.GetString(arrayNew);//将字节数组转换为字符串
+三  BufferedStream类
+     BufferedStream类主要也是用来处理流数据的，但是该类主要的功能是用来封装其他流类。为什么要封装其他流类，这么做的意义是什么？按照微软的话说主要是减少某些流直接操作存储设备的时间。对于一些流来说直接向磁盘中存储数据这种做法的效率并不高，用BufferedStream包装过的流，先在内存中进行统一的处理再向磁盘中写入数据，也会提高写入的效率。
+     将磁盘上的一个文件写入到磁盘上的另一个文件中：
+
+
+ 1 FileStream file1 = File.Open(@"F:\file1.txt", FileMode.OpenOrCreate,FileAccess.Read);//读取文件流
+ 2 FileStream file 2= File.Open(@"F:\file2.txt", FileMode.OpenOrCreate,FileAccess.Write);//写入文件流
+ 3 
+ 4 byte[] array = new byte[4096];
+ 5       
+ 6 BufferedStream bufferedInput = new BufferedStream(file1);//封装文件流
+ 7 BufferedStream bufferedOutput = new BufferedStream(file2);//封装文件流
+ 8 
+ 9 bufferedInput.Read(array, 0, array.Length);
+10 bufferedOutput.Write(array, 0, array.Length);
+11 
+12 int bytesRead = 0;
+13 while ((bytesRead = bufferedInput.Read(array, 0, 4096)) > 0)//读取到了数据
+14   {
+15     bufferedOutput.Write(array, 0, bytesRead);
+16     Console.WriteLine(bytesRead);
+17    }
+18 bufferedInput.Close();//关闭各种流
+19 bufferedOutput.Close();
+20 file1.Close();
+21 file2.Close();
+
+     实际测试中，封装流的方法在效率上并没有太多的提升。使用其他流也可以封装文件流。如果想要保证不频繁的读取磁盘其实只要保证代码不这样做就可以了，所以其实在代码上多加控制，也能保证程序不会经常的操作磁盘。
+四 NetWorkStream类
+    NetWorkStream类是专门用来处理服务器与客户端通信的流。它在网络编程中经常使用，主要是用来处理类似Socket、TcpClient和TcpListener这些类中得到的流。
+    简单的TCP同步方式服务器与客户端通信：
+
+
+ 1 TcpListener lis=new TcpListener(5000); //服务器监听
+ 2 lis.Start();//启动
+ 3 Socket sock=lis.AcceptSocket();//阻塞，直到有客户端连接
+ 4 
+ 5 NetworkStream networkStream = new NetworkStream(sock);//得到Socket中的流
+ 6 if (netStream.DataAvailable)   //如果客户端发送了消息
+ 7 {
+ 8    byte[] data = new byte[1024];   //定义一个字节数组，用来存放接收的数据
+ 9    int len = netStream.Read(data, 0, data.Length);  //从位置开始，读取到字节数组末尾
+10    string line = Encoding.Default.GetString(data, 0, len);  //把收到的字节转换为字符串
+11 }
+
+
+
+1 TcpClient client = new TcpClient();//客户端tcp对象
+2 client.Connect("127.0.0.1", 5000);//连接服务器
+3 NetworkStream myStream = client.GetStream();//得到网络流
+4                 
+5 byte[] data = Encoding.Default.GetBytes("Hi，你好");  //首先把输入的字符串消息转换为字节
+6 myStream .Write(data, 0, data.Length);  //向myStream 里写入数据
+7 myStream .Flush();  //刷新流中的数据
+8 myStream .Close();
+
+五  StreamReader/StreamWriter类
+     StreamReader/StreamWriter主要用来处理流数据。它们分别提供了高效的流读取/写入功能。
+     读取与写入：
+
+
+ 1 StreamReader reader = new StreamReader("filePath");//初始化读取
+ 2 StreamWriter writer = new StreamWriter("filePath");//初始化写入
+ 3 
+ 4 string readStr=reader.ReadLine();//从流中读取一行
+ 5 string readAff = reader.ReadToEnd();//从流中读取全部
+ 6 
+ 7 writer.Write("Hi 你好");//写入内容
+ 8 writer.WriteLine("Hi 你好");//写入一行
+ 9 
+10 reader.Close();//关闭流
+11 writer.Close();
+
+六  TextReader/TextWriter类
+     TextReader/TextWriter类主要用来处理流数据。它们分别提供了高效的文本流读取/写入功能。
+     读取与写入：
+
+
+ 1 TextReader textReader = new StringReader("Hi 你好");//初始化读取流
+ 2 TextWriter textWriter = new StringWriter();//初始化写入流
+ 3 
+ 4 char[] c=new char[4096];
+ 5 int chars = 0;
+ 6 while ((chars = textReader.Read(c, 0, 4096)) > 0)//把流中数据写入到字符数组中
+ 7 {
+ 8    textWriter.Write(c, 0, 4096);//从字符数组中读取流
+ 9 }
+10 
+11 string str= textWriter.ToString();//将流中数据写到字符串中
+12 textReader.Close();//关闭流
+13 textWriter.Close();
+
+注意事项:
+1.流使用后必须要关闭。
+2.把流中数据加载到内存时要考虑内存溢出等问题。
+
+
+
+
+
+
